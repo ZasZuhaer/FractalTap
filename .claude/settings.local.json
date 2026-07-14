@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(mkdir -p C:/Users/Zuhaer/AppData/Local/Temp/claude/d--Projects-FractalTap/e731755a-0ecf-4ac6-921b-0ed0cf525c88/scratchpad/pw)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(mkdir -p screenshots)",
+      "Bash(node test.js)",
+      "Bash(node test-long.js)",
+      "Bash(node test-resize.js)",
+      "Bash(node -e \"console.log\\('check'\\)\")",
+      "Bash(node --check src/utils.js)",
+      "Bash(node --check src/woodTexture.js)",
+      "Bash(node test-file-protocol.js)",
+      "Bash(node test-lightning.js)",
+      "Bash(pkill -f \"http.server 8743\")"
+    ]
+  }
+}
