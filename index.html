@@ -11,10 +11,67 @@
   <canvas id="wood-canvas"></canvas>
   <canvas id="burn-canvas"></canvas>
   <canvas id="glow-canvas"></canvas>
+
+  <button id="drawer-toggle" class="drawer-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="drawer-panel">
+    <span class="hamburger"><span></span><span></span><span></span></span>
+  </button>
+
+  <div id="drawer-overlay" class="drawer-overlay"></div>
+
+  <aside id="drawer-panel" class="drawer-panel" aria-hidden="true" aria-label="Settings menu">
+    <div class="drawer-header">
+      <h2>Menu</h2>
+    </div>
+
+    <div class="drawer-content">
+      <section class="drawer-section">
+        <h3>Fractal Design</h3>
+        <ul id="fractal-list" class="fractal-list" role="radiogroup" aria-label="Fractal design"></ul>
+      </section>
+
+      <section class="drawer-section">
+        <h3>Growth Settings</h3>
+
+        <label class="field" for="branches-slider">
+          <span class="field-label">
+            Branches
+            <span id="branches-value" class="field-value">4</span>
+          </span>
+          <input id="branches-slider" class="range-input" type="range" min="1" max="8" step="1" value="4" />
+        </label>
+
+        <label class="field field-toggle" for="symmetry-toggle">
+          <span class="field-label">
+            Symmetry
+          </span>
+          <span class="toggle">
+            <input id="symmetry-toggle" class="toggle-input" type="checkbox" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+      </section>
+
+      <section class="drawer-section">
+        <h3>History</h3>
+        <div class="history-actions">
+          <button id="undo-btn" class="drawer-btn" type="button" disabled>
+            <span class="drawer-btn-icon">&#8630;</span> Undo
+          </button>
+          <button id="redo-btn" class="drawer-btn" type="button" disabled>
+            <span class="drawer-btn-icon">&#8631;</span> Redo
+          </button>
+        </div>
+      </section>
+    </div>
+  </aside>
+
   <script src="src/utils.js"></script>
+  <script src="src/settings.js"></script>
   <script src="src/woodTexture.js"></script>
   <script src="src/lichtenberg.js"></script>
+  <script src="src/history.js"></script>
   <script src="src/pointerController.js"></script>
+  <script src="src/drawer.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>

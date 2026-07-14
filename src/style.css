@@ -39,3 +39,392 @@ canvas {
   z-index: 3;
   pointer-events: none;
 }
+
+/* ---------- Drawer toggle button ---------- */
+
+.drawer-toggle {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 20;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 200, 150, 0.22);
+  border-radius: 12px;
+  background: rgba(28, 17, 8, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.drawer-toggle:active {
+  background: rgba(28, 17, 8, 0.75);
+}
+
+.hamburger {
+  position: relative;
+  width: 20px;
+  height: 14px;
+}
+
+.hamburger span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: #f3e3d1;
+  transition: transform 0.25s ease, opacity 0.2s ease, top 0.25s ease;
+}
+
+.hamburger span:nth-child(1) { top: 0; }
+.hamburger span:nth-child(2) { top: 6px; }
+.hamburger span:nth-child(3) { top: 12px; }
+
+.drawer-toggle[aria-expanded="true"] .hamburger span:nth-child(1) {
+  top: 6px;
+  transform: rotate(45deg);
+}
+.drawer-toggle[aria-expanded="true"] .hamburger span:nth-child(2) {
+  opacity: 0;
+}
+.drawer-toggle[aria-expanded="true"] .hamburger span:nth-child(3) {
+  top: 6px;
+  transform: rotate(-45deg);
+}
+
+/* ---------- Overlay + panel ---------- */
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: rgba(10, 6, 3, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.drawer-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 16;
+  width: min(86vw, 320px);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #241608 0%, #1a0f06 70%, #170d05 100%);
+  border-right: 1px solid rgba(255, 190, 130, 0.15);
+  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.45);
+  transform: translateX(-100%);
+  transition: transform 0.32s cubic-bezier(0.22, 0.9, 0.34, 1);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  touch-action: pan-y;
+}
+
+.drawer-panel.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 70px;
+  /* Extra left padding keeps the title clear of the fixed menu
+     toggle button, which now sits in this same top-left corner. */
+  padding: 20px 20px 16px 78px;
+  border-bottom: 1px solid rgba(255, 190, 130, 0.12);
+}
+
+.drawer-header h2 {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #f3e3d1;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 8px 20px 24px;
+}
+
+.drawer-section {
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(255, 190, 130, 0.08);
+}
+
+.drawer-section:last-child {
+  border-bottom: none;
+}
+
+.drawer-section h3 {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b8967a;
+  margin-bottom: 12px;
+}
+
+/* ---------- Fractal list ---------- */
+
+.fractal-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fractal-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 190, 130, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f3e3d1;
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.fractal-option.selected {
+  border-color: #ff9c46;
+  background: rgba(255, 156, 70, 0.12);
+}
+
+.fractal-radio-dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #8a6a4f;
+  position: relative;
+}
+
+.fractal-option.selected .fractal-radio-dot {
+  border-color: #ff9c46;
+}
+
+.fractal-option.selected .fractal-radio-dot::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: #ff9c46;
+}
+
+.fractal-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fractal-option-name {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fractal-option-desc {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #b8967a;
+}
+
+/* ---------- Fields (slider / toggle) ---------- */
+
+.field {
+  display: block;
+  margin-bottom: 18px;
+  cursor: pointer;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #f3e3d1;
+  margin-bottom: 10px;
+}
+
+.field-value {
+  font-weight: 700;
+  color: #ff9c46;
+}
+
+.field-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #b8967a;
+  margin-top: 3px;
+}
+
+.field-toggle .field-label {
+  display: block;
+  margin-bottom: 0;
+}
+
+.field-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+  touch-action: pan-x;
+  outline: none;
+}
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff9c46;
+  border: 2px solid #1a0f06;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.range-input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff9c46;
+  border: 2px solid #1a0f06;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.range-input::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.toggle {
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 26px;
+}
+
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.2s ease;
+  touch-action: manipulation;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f3e3d1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.22s ease;
+}
+
+.toggle-input:checked + .toggle-track {
+  background: #ff9c46;
+}
+
+.toggle-input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(18px);
+}
+
+.toggle-input:focus-visible + .toggle-track {
+  outline: 2px solid #ff9c46;
+  outline-offset: 2px;
+}
+
+/* ---------- History (undo/redo) ---------- */
+
+.history-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.drawer-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 10px;
+  border: 1px solid rgba(255, 190, 130, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f3e3d1;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.drawer-btn:active:not(:disabled) {
+  background: rgba(255, 156, 70, 0.16);
+}
+
+.drawer-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.drawer-btn-icon {
+  font-size: 16px;
+  line-height: 1;
+}

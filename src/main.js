@@ -3,7 +3,10 @@
 // so the app also works when the page is opened directly via file://.
 const { createWoodTexture } = window.App.woodTexture;
 const { createPointerController } = window.App.pointerController;
-const { drawBurnDot, createGrowthSession, stepGrowthSession, drawTipGlow } = window.App.lichtenberg;
+const { drawBurnDot, createGrowthSession, stepGrowthSession, drawTipGlow, getTipWorldPositions } =
+  window.App.lichtenberg;
+const settings = window.App.settings;
+const history = window.App.history;
 
 const woodCanvas = document.getElementById('wood-canvas');
 const burnCanvas = document.getElementById('burn-canvas');
@@ -11,6 +14,8 @@ const glowCanvas = document.getElementById('glow-canvas');
 const woodCtx = woodCanvas.getContext('2d');
 const burnCtx = burnCanvas.getContext('2d', { alpha: true });
 const glowCtx = glowCanvas.getContext('2d', { alpha: true });
+
+history.attach(burnCtx);
 
 const MAX_DPR = 2.5; // cap device pixel ratio so 4K/8K panels stay smooth
 const woodSeed = Date.now() & 0xffffffff;
@@ -58,6 +63,11 @@ function resizeCanvases(preserveBurnMarks) {
   glowCanvas.width = Math.round(w * dpr);
   glowCanvas.height = Math.round(h * dpr);
   glowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Resizing changes canvas dimensions, which invalidates any stored
+  // undo/redo snapshots; start a fresh baseline from what's on screen
+  // now (this is the one case where undo history is intentionally lost).
+  history.reset();
 }
 
 resizeCanvases(false);
@@ -98,7 +108,9 @@ function loop(timestamp) {
   clearGlow();
   for (const session of sessions.values()) {
     for (const tip of session.tips) {
-      drawTipGlow(glowCtx, tip.x, tip.y, tip.width);
+      for (const pos of getTipWorldPositions(session, tip)) {
+        drawTipGlow(glowCtx, pos.x, pos.y, tip.width);
+      }
     }
   }
 
@@ -112,24 +124,51 @@ function ensureLoopRunning() {
   }
 }
 
+/** Freezes one growth session permanently and records it as an
+ * undoable action. Shared by a normal pointer release and by the
+ * drawer forcing any in-progress growth to finish (e.g. on open). */
+function finishSession(id) {
+  if (!sessions.has(id)) return;
+  sessions.delete(id);
+  history.commit();
+  if (sessions.size === 0) {
+    // The loop is about to stop and won't get another chance to
+    // clear the transient glow layer, so do it now.
+    clearGlow();
+  }
+}
+
+function endAllSessions() {
+  for (const id of Array.from(sessions.keys())) {
+    finishSession(id);
+  }
+}
+
 const pointerController = createPointerController({
   onTap(x, y) {
+    if (window.App.drawer && window.App.drawer.isOpen()) return;
     drawBurnDot(burnCtx, x, y);
+    history.commit();
   },
   onHoldStart(id, x, y) {
-    sessions.set(id, createGrowthSession(burnCtx, x, y));
+    if (window.App.drawer && window.App.drawer.isOpen()) return;
+    sessions.set(
+      id,
+      createGrowthSession(burnCtx, x, y, {
+        branchCount: settings.branches,
+        symmetric: settings.symmetry,
+      })
+    );
     ensureLoopRunning();
   },
   onHoldEnd(id) {
-    // Growth simply stops advancing; whatever was drawn stays baked
-    // into the burn canvas permanently.
-    sessions.delete(id);
-    if (sessions.size === 0) {
-      // The loop is about to stop and won't get another chance to
-      // clear the transient glow layer, so do it now.
-      clearGlow();
-    }
+    finishSession(id);
   },
 });
 
 pointerController.attach(burnCanvas);
+
+window.App.growth = {
+  isActive: () => sessions.size > 0,
+  endAllSessions,
+};

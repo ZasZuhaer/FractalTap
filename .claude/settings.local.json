@@ -17,7 +17,8 @@
       "Bash(node --check src/woodTexture.js)",
       "Bash(node test-file-protocol.js)",
       "Bash(node test-lightning.js)",
-      "Bash(pkill -f \"http.server 8743\")"
+      "Bash(pkill -f \"http.server 8743\")",
+      "Bash(node test-drawer.js)"
     ]
   }
 }

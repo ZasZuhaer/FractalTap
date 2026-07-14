@@ -88,13 +88,48 @@ function drawSegment(ctx, x0, y0, x1, y1, widthPx) {
   ctx.stroke();
 }
 
-/** A short, thin static offshoot branching off the main channel. */
-function drawBarb(ctx, x, y, baseAngle, widthPx) {
+/** Rotates a point around the local origin, then places it in world
+ * space — the one operation that turns a single canonical branch into
+ * an evenly-spaced radial copy. */
+function rotateAndPlace(lx, ly, rotation, worldX, worldY) {
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  return {
+    x: worldX + lx * cos - ly * sin,
+    y: worldY + lx * sin + ly * cos,
+  };
+}
+
+/**
+ * Draws one segment, replicated across every symmetric branch when the
+ * session is in symmetric mode. Non-symmetric sessions draw their
+ * (already world-space) coordinates exactly once, unchanged.
+ */
+function drawReplicatedSegment(ctx, session, x0, y0, x1, y1, widthPx) {
+  if (!session.symmetric) {
+    drawSegment(ctx, x0, y0, x1, y1, widthPx);
+    return;
+  }
+  const n = session.branchCount;
+  for (let i = 0; i < n; i++) {
+    const rotation = session.rotationBase + (i / n) * TAU;
+    const p0 = rotateAndPlace(x0, y0, rotation, session.worldOriginX, session.worldOriginY);
+    const p1 = rotateAndPlace(x1, y1, rotation, session.worldOriginX, session.worldOriginY);
+    drawSegment(ctx, p0.x, p0.y, p1.x, p1.y, widthPx);
+  }
+}
+
+/** Computes a short, thin static offshoot's endpoint — pure geometry,
+ * randomized once regardless of how many symmetric copies will be
+ * drawn from it, so every rotated copy gets the identical barb. */
+function computeBarb(x, y, baseAngle, widthPx) {
   const angle = baseAngle + sign() * randRange(0.9, 1.7);
   const len = randRange(4, 14) * clamp(widthPx / 2.4, 0.4, 1.3);
-  const bx = x + Math.cos(angle) * len;
-  const by = y + Math.sin(angle) * len;
-  drawSegment(ctx, x, y, bx, by, Math.max(0.5, widthPx * 0.42));
+  return {
+    x1: x + Math.cos(angle) * len,
+    y1: y + Math.sin(angle) * len,
+    width: Math.max(0.5, widthPx * 0.42),
+  };
 }
 
 /** A small charred blotch for a plain tap/click. */
@@ -139,35 +174,95 @@ function drawTipGlow(ctx, x, y, widthPx) {
   ctx.fill();
 }
 
+/** World-space position(s) a tip should currently be rendered at: one
+ * position for a normal (independent) tip, or one per symmetric branch
+ * for a canonical tip being mirrored radially. Used by callers that
+ * need to draw something at a tip's *current* location every frame
+ * (e.g. the live glow), outside the segment-drawing path above. */
+function getTipWorldPositions(session, tip) {
+  if (!session.symmetric) {
+    return [{ x: tip.x, y: tip.y }];
+  }
+  const n = session.branchCount;
+  const positions = [];
+  for (let i = 0; i < n; i++) {
+    const rotation = session.rotationBase + (i / n) * TAU;
+    positions.push(rotateAndPlace(tip.x, tip.y, rotation, session.worldOriginX, session.worldOriginY));
+  }
+  return positions;
+}
+
 /**
  * Starts a new growth session at the contact point: burns an origin
  * mark and radiates a few initial tips outward.
+ *
+ * @param {object} [options]
+ * @param {number} [options.branchCount] how many primary branches (1-8)
+ * @param {boolean} [options.symmetric] when true, only ONE canonical
+ *   branch is ever simulated (in local coordinates around the touch
+ *   point); every draw call mirrors it at `branchCount` evenly-spaced
+ *   rotations, so every branch — forks, kinks, barbs, timing, all of
+ *   it — is a pixel-identical rotated copy. When false, each branch is
+ *   simulated independently with its own randomized angle, giving the
+ *   organic, non-repeating look.
  */
-function createGrowthSession(ctx, x, y) {
+function createGrowthSession(ctx, x, y, options) {
+  const opts = options || {};
+  const branchCount = clamp(Math.round(opts.branchCount || INITIAL_BRANCHES), 1, 8);
+  const symmetric = !!opts.symmetric;
+
   drawBurnDot(ctx, x, y);
 
+  // Replicating draws N times multiplies rendering cost, so scale the
+  // per-session growth budget down accordingly — the finished symmetric
+  // figure ends up with roughly the same total segment/tip count as a
+  // non-symmetric one, just arranged radially instead of independently.
+  const maxSegments = symmetric ? Math.max(200, Math.round(MAX_SEGMENTS / branchCount)) : MAX_SEGMENTS;
+  const maxActiveTips = symmetric ? Math.max(6, Math.round(MAX_ACTIVE_TIPS / branchCount)) : MAX_ACTIVE_TIPS;
+
+  if (symmetric) {
+    const tip = makeTip(0, 0, 0, randRange(220, 380), randRange(2.8, 3.8), randRange(130, 210));
+    return {
+      symmetric: true,
+      branchCount,
+      rotationBase: Math.random() * TAU,
+      worldOriginX: x,
+      worldOriginY: y,
+      tips: [tip],
+      burnedPoints: [{ x: 0, y: 0 }],
+      segmentCount: 0,
+      maxSegments,
+      maxActiveTips,
+    };
+  }
+
   const tips = [];
-  const baseAngle = Math.random() * TAU;
-  for (let i = 0; i < INITIAL_BRANCHES; i++) {
-    const angle = baseAngle + (i / INITIAL_BRANCHES) * TAU + randRange(-0.25, 0.25);
+  for (let i = 0; i < branchCount; i++) {
+    const angle = Math.random() * TAU;
     tips.push(makeTip(x, y, angle, randRange(220, 380), randRange(2.8, 3.8), randRange(130, 210)));
   }
 
   return {
+    symmetric: false,
     originX: x,
     originY: y,
     tips,
     burnedPoints: [{ x, y }],
     segmentCount: 0,
+    maxSegments,
+    maxActiveTips,
   };
 }
 
 /**
  * Advances one growth session by dt seconds, drawing newly grown
- * segments directly onto the (permanent) burn canvas.
+ * segments directly onto the (permanent) burn canvas. For a symmetric
+ * session this steps the single canonical branch and draws every
+ * segment/barb replicated at each rotation, keeping every branch a
+ * perfect mirrored copy grown in lockstep.
  */
 function stepGrowthSession(ctx, session, dt) {
-  if (session.segmentCount >= MAX_SEGMENTS) return;
+  if (session.segmentCount >= session.maxSegments) return;
 
   const nextTips = [];
 
@@ -187,11 +282,12 @@ function stepGrowthSession(ctx, session, dt) {
     // branch's life, then narrows quickly to a sharp point.
     const energyFrac = clamp(tip.energy / tip.maxEnergy, 0, 1);
     const widthPx = Math.max(0.5, tip.width * Math.pow(energyFrac, 1.15));
-    drawSegment(ctx, tip.x, tip.y, nx, ny, widthPx);
+    drawReplicatedSegment(ctx, session, tip.x, tip.y, nx, ny, widthPx);
     session.segmentCount++;
 
     if (Math.random() < BARB_CHANCE) {
-      drawBarb(ctx, nx, ny, tip.angle, widthPx);
+      const barb = computeBarb(nx, ny, tip.angle, widthPx);
+      drawReplicatedSegment(ctx, session, nx, ny, barb.x1, barb.y1, barb.width);
     }
 
     if (session.segmentCount % 5 === 0) {
@@ -202,9 +298,9 @@ function stepGrowthSession(ctx, session, dt) {
     tip.y = ny;
     tip.energy -= stepLen;
 
-    if (tip.energy > 0 && session.segmentCount < MAX_SEGMENTS) {
+    if (tip.energy > 0 && session.segmentCount < session.maxSegments) {
       const canFork =
-        session.tips.length + nextTips.length < MAX_ACTIVE_TIPS &&
+        session.tips.length + nextTips.length < session.maxActiveTips &&
         Math.random() < FORK_CHANCE_PER_SEC * dt;
       if (canFork) {
         nextTips.push(makeChildTip(tip));
@@ -217,14 +313,22 @@ function stepGrowthSession(ctx, session, dt) {
 
   if (
     session.tips.length < MIN_ACTIVE_TIPS &&
-    session.segmentCount < MAX_SEGMENTS &&
+    session.segmentCount < session.maxSegments &&
     session.burnedPoints.length > 0 &&
     Math.random() < RESPAWN_CHANCE_PER_SEC * dt
   ) {
     const p = session.burnedPoints[(Math.random() * session.burnedPoints.length) | 0];
-    session.tips.push(makeSpawnTip(p.x, p.y, session.originX, session.originY));
+    const originX = session.symmetric ? 0 : session.originX;
+    const originY = session.symmetric ? 0 : session.originY;
+    session.tips.push(makeSpawnTip(p.x, p.y, originX, originY));
   }
 }
 
-  App.lichtenberg = { drawBurnDot, createGrowthSession, stepGrowthSession, drawTipGlow };
+  App.lichtenberg = {
+    drawBurnDot,
+    createGrowthSession,
+    stepGrowthSession,
+    drawTipGlow,
+    getTipWorldPositions,
+  };
 })(window.App = window.App || {});
