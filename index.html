@@ -16,6 +16,24 @@
     <span class="hamburger"><span></span><span></span><span></span></span>
   </button>
 
+  <div id="quick-actions" class="quick-actions">
+    <button id="undo-btn" class="quick-btn" type="button" aria-label="Undo" disabled>
+      <span class="quick-btn-icon">&#8630;</span>
+    </button>
+    <button id="redo-btn" class="quick-btn" type="button" aria-label="Redo" disabled>
+      <span class="quick-btn-icon">&#8631;</span>
+    </button>
+    <button id="clear-btn" class="quick-btn quick-btn-danger" type="button" aria-label="Clear board">
+      <svg class="quick-btn-icon quick-btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16" />
+        <path d="M9 7V4h6v3" />
+        <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+        <path d="M10 11v6" />
+        <path d="M14 11v6" />
+      </svg>
+    </button>
+  </div>
+
   <div id="drawer-overlay" class="drawer-overlay"></div>
 
   <aside id="drawer-panel" class="drawer-panel" aria-hidden="true" aria-label="Settings menu">
@@ -51,17 +69,6 @@
         </label>
       </section>
 
-      <section class="drawer-section">
-        <h3>History</h3>
-        <div class="history-actions">
-          <button id="undo-btn" class="drawer-btn" type="button" disabled>
-            <span class="drawer-btn-icon">&#8630;</span> Undo
-          </button>
-          <button id="redo-btn" class="drawer-btn" type="button" disabled>
-            <span class="drawer-btn-icon">&#8631;</span> Redo
-          </button>
-        </div>
-      </section>
     </div>
   </aside>
 
@@ -69,6 +76,9 @@
   <script src="src/settings.js"></script>
   <script src="src/woodTexture.js"></script>
   <script src="src/lichtenberg.js"></script>
+  <script src="src/burnagirl.js"></script>
+  <script src="src/electricfern.js"></script>
+  <script src="src/burning.js"></script>
   <script src="src/history.js"></script>
   <script src="src/pointerController.js"></script>
   <script src="src/drawer.js"></script>

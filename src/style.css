@@ -389,42 +389,101 @@ canvas {
   outline-offset: 2px;
 }
 
-/* ---------- History (undo/redo) ---------- */
+/* ---------- Segmented control (Burning mode) ---------- */
 
-.history-actions {
+.segmented {
   display: flex;
-  gap: 10px;
-}
-
-.drawer-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 11px 10px;
-  border: 1px solid rgba(255, 190, 130, 0.16);
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(255, 190, 130, 0.14);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
-  color: #f3e3d1;
+}
+
+.segmented-option {
+  flex: 1;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #d8bfa4;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   touch-action: manipulation;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.segmented-option.active {
+  background: rgba(255, 156, 70, 0.16);
+  border-color: rgba(255, 156, 70, 0.4);
+  color: #ff9c46;
+}
+
+/* ---------- Quick actions (undo/redo/clear) ---------- */
+
+.quick-actions {
+  position: fixed;
+  top: calc(max(16px, env(safe-area-inset-top)) + 46px + 10px);
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.quick-actions.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.quick-btn {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 200, 150, 0.22);
+  border-radius: 12px;
+  background: rgba(28, 17, 8, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  color: #f3e3d1;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.2s ease, opacity 0.2s ease;
 }
 
-.drawer-btn:active:not(:disabled) {
+.quick-btn:active:not(:disabled) {
   background: rgba(255, 156, 70, 0.16);
 }
 
-.drawer-btn:disabled {
+.quick-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.drawer-btn-icon {
-  font-size: 16px;
+.quick-btn-icon {
+  font-size: 18px;
   line-height: 1;
+}
+
+.quick-btn-icon-svg {
+  width: 19px;
+  height: 19px;
+}
+
+.quick-btn-danger {
+  border-color: rgba(255, 110, 90, 0.3);
+  color: #ffb4a3;
+}
+
+.quick-btn-danger:active:not(:disabled) {
+  background: rgba(255, 90, 70, 0.16);
 }

@@ -2,12 +2,14 @@
   const toggleBtn = document.getElementById('drawer-toggle');
   const overlay = document.getElementById('drawer-overlay');
   const panel = document.getElementById('drawer-panel');
+  const quickActions = document.getElementById('quick-actions');
   const fractalList = document.getElementById('fractal-list');
   const branchesSlider = document.getElementById('branches-slider');
   const branchesValue = document.getElementById('branches-value');
   const symmetryToggle = document.getElementById('symmetry-toggle');
   const undoBtn = document.getElementById('undo-btn');
   const redoBtn = document.getElementById('redo-btn');
+  const clearBtn = document.getElementById('clear-btn');
 
   let isOpen = false;
 
@@ -68,6 +70,7 @@
     isOpen = true;
     panel.classList.add('open');
     overlay.classList.add('visible');
+    quickActions.classList.add('hidden');
     toggleBtn.setAttribute('aria-expanded', 'true');
     toggleBtn.setAttribute('aria-label', 'Close menu');
     panel.setAttribute('aria-hidden', 'false');
@@ -78,6 +81,7 @@
     isOpen = false;
     panel.classList.remove('open');
     overlay.classList.remove('visible');
+    quickActions.classList.remove('hidden');
     toggleBtn.setAttribute('aria-expanded', 'false');
     toggleBtn.setAttribute('aria-label', 'Open menu');
     panel.setAttribute('aria-hidden', 'true');
@@ -104,6 +108,11 @@
     App.settings.symmetry = symmetryToggle.checked;
   });
 
+  // Constant burning mode's UI is disabled for now (App.settings.burning
+  // stays at its 'single' default — see settings.js) while the feature
+  // gets redesigned; the engine hooks and src/burning.js orchestration
+  // module are left in place to build back on later.
+
   undoBtn.addEventListener('click', () => {
     if (undoBtn.disabled) return;
     App.history.undo();
@@ -112,6 +121,11 @@
   redoBtn.addEventListener('click', () => {
     if (redoBtn.disabled) return;
     App.history.redo();
+    refreshHistoryButtons();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (App.board) App.board.clear();
     refreshHistoryButtons();
   });
 

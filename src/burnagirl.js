@@ -1,26 +1,28 @@
 (function (App) {
   const { TAU, clamp } = App.utils;
 
-// Tunable growth parameters. Kept together so the "feel" of the
-// fractal can be adjusted from one place.
-const MAX_SEGMENTS = 6000;
-const MAX_ACTIVE_TIPS = 42;
-const MIN_ACTIVE_TIPS = 2;
-const FORK_CHANCE_PER_SEC = 1.5;
-const RESPAWN_CHANCE_PER_SEC = 2.4;
+// BurnaGirl: a denser, more jagged sibling of the Lichtenberg Burn
+// engine. Same architecture and curve-smoothing (see strokeSmoothPath
+// below) — only the growth tuning differs, favoring many more
+// generations of sub-branches (branches of branches of branches...)
+// and sharper, more frequent direction changes.
+const MAX_SEGMENTS = 9000;
+const MAX_ACTIVE_TIPS = 70;
+const MIN_ACTIVE_TIPS = 3;
+const FORK_CHANCE_PER_SEC = 3.6;
+const RESPAWN_CHANCE_PER_SEC = 2.8;
 const INITIAL_BRANCHES = 4;
 
-// Two-tier steering: a small continuous wobble plus infrequent sharp
-// "kinks" is what makes the path read as jagged lightning rather than
-// a smooth curve.
-const JITTER_RATE = 1.1; // rad/sec of continuous wobble
-const KINK_CHANCE_PER_SEC = 3.0;
-const KINK_MIN = 0.16; // ~9deg
-const KINK_MAX = 0.55; // ~31deg
+// Wider, more frequent steering than Lichtenberg Burn — the path
+// still never gets a hard corner (see strokeSmoothPath), just more
+// and sharper rounded turns packed closer together.
+const JITTER_RATE = 1.8; // rad/sec of continuous wobble
+const KINK_CHANCE_PER_SEC = 5.5;
+const KINK_MIN = 0.22; // ~13deg
+const KINK_MAX = 0.75; // ~43deg
 
-// Small fractal offshoots stitched onto the main channel for texture,
-// mirroring the fine barbs seen on real Lichtenberg burns.
-const BARB_CHANCE = 0.16;
+// Small fractal offshoots stitched onto the main channel for texture.
+const BARB_CHANCE = 0.24;
 
 // Finished branches are archived (see archiveTip) so Constant burning
 // mode can periodically re-stroke them thicker; capped so an extremely
@@ -40,9 +42,9 @@ function sign() {
  * a smooth curve through the last three points instead of a straight
  * line — see strokeSmoothPath. `generation` (0 = primary branch, +1 per
  * fork) and `pathPoints` (every point the tip has passed through) exist
- * for every tip regardless of burning mode, but are only read by Single
- * mode's engine-agnostic Constant-mode counterpart (src/burning.js) —
- * harmless bookkeeping otherwise. */
+ * for every tip regardless of burning mode, but are only read by the
+ * engine-agnostic Constant-mode module (src/burning.js) — harmless
+ * bookkeeping otherwise. */
 function makeTip(x, y, angle, energy, width, speed, generation) {
   return {
     x,
@@ -59,15 +61,18 @@ function makeTip(x, y, angle, energy, width, speed, generation) {
   };
 }
 
+/** Children keep a larger share of their parent's energy than in
+ * Lichtenberg Burn, so they can themselves fork again (and again),
+ * producing visibly deeper generations of sub-branches. */
 function makeChildTip(parent) {
-  const angle = parent.angle + sign() * randRange(0.3, 0.85);
-  const energy = parent.energy * randRange(0.4, 0.68);
+  const angle = parent.angle + sign() * randRange(0.28, 0.95);
+  const energy = parent.energy * randRange(0.5, 0.78);
   return makeTip(
     parent.x,
     parent.y,
     angle,
     energy,
-    parent.width * 0.66,
+    parent.width * 0.72,
     parent.speed * randRange(0.85, 1.08),
     parent.generation + 1
   );
@@ -143,7 +148,8 @@ function drawSegment(ctx, x0, y0, x1, y1, widthPx) {
  * share an endpoint (this call's outgoing midpoint is the next call's
  * incoming midpoint), so the whole path is one continuous curve with
  * no sharp vertex at p1 — even a large, sudden angle change comes out
- * rounded rather than a hard corner.
+ * rounded rather than a hard corner. This is what keeps BurnaGirl's
+ * much jaggier steering still reading as smooth, curved turns.
  */
 function strokeSmoothPath(ctx, p0x, p0y, p1x, p1y, p2x, p2y, widthPx) {
   const inX = (p0x + p1x) / 2;
@@ -324,8 +330,8 @@ function createGrowthSession(ctx, x, y, options) {
   // per-session growth budget down accordingly — the finished symmetric
   // figure ends up with roughly the same total segment/tip count as a
   // non-symmetric one, just arranged radially instead of independently.
-  const maxSegments = symmetric ? Math.max(200, Math.round(MAX_SEGMENTS / branchCount)) : MAX_SEGMENTS;
-  const maxActiveTips = symmetric ? Math.max(6, Math.round(MAX_ACTIVE_TIPS / branchCount)) : MAX_ACTIVE_TIPS;
+  const maxSegments = symmetric ? Math.max(300, Math.round(MAX_SEGMENTS / branchCount)) : MAX_SEGMENTS;
+  const maxActiveTips = symmetric ? Math.max(9, Math.round(MAX_ACTIVE_TIPS / branchCount)) : MAX_ACTIVE_TIPS;
 
   if (symmetric) {
     const tip = makeTip(0, 0, 0, randRange(220, 380), randRange(2.8, 3.8), randRange(130, 210), 0);
@@ -465,7 +471,7 @@ function stepGrowthSession(ctx, session, dt) {
     strokeGrowthPath: drawReplicatedSmoothPath,
   };
 
-  App.lichtenberg = engine;
+  App.burnagirl = engine;
   App.fractalEngines = App.fractalEngines || {};
-  App.fractalEngines.lichtenberg = engine;
+  App.fractalEngines.burnagirl = engine;
 })(window.App = window.App || {});

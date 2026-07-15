@@ -3,10 +3,14 @@
 // so the app also works when the page is opened directly via file://.
 const { createWoodTexture } = window.App.woodTexture;
 const { createPointerController } = window.App.pointerController;
-const { drawBurnDot, createGrowthSession, stepGrowthSession, drawTipGlow, getTipWorldPositions } =
-  window.App.lichtenberg;
 const settings = window.App.settings;
 const history = window.App.history;
+
+/** The fractal engine currently selected in the drawer (falls back to
+ * Lichtenberg Burn if the setting is ever pointed at an unknown id). */
+function activeEngine() {
+  return window.App.fractalEngines[settings.fractalType] || window.App.fractalEngines.lichtenberg;
+}
 
 const woodCanvas = document.getElementById('wood-canvas');
 const burnCanvas = document.getElementById('burn-canvas');
@@ -78,8 +82,11 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(() => resizeCanvases(true), 150);
 });
 
-// One shared animation loop drives every simultaneously-held growth session.
-const sessions = new Map(); // pointerId -> growth session
+// One shared animation loop drives every simultaneously-held growth
+// session. Each entry remembers which engine created it, so stepping
+// and drawing stay consistent even if the selected fractal design
+// changes between one hold and the next.
+const sessions = new Map(); // pointerId -> { session, engine }
 let rafId = null;
 let lastTime = 0;
 
@@ -99,17 +106,24 @@ function loop(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
 
-  for (const session of sessions.values()) {
-    stepGrowthSession(burnCtx, session, dt);
+  for (const { session, engine } of sessions.values()) {
+    if (session.burning === 'constant') {
+      window.App.burning.updateBudgets(session, dt);
+      window.App.burning.updateGenBoost(session);
+    }
+    engine.stepGrowthSession(burnCtx, session, dt);
+    if (session.burning === 'constant') {
+      window.App.burning.maybeThicken(burnCtx, session, engine);
+    }
   }
 
   // Live electric glow at each still-growing tip; redrawn from scratch
   // every frame so it vanishes the instant a hold ends.
   clearGlow();
-  for (const session of sessions.values()) {
+  for (const { session, engine } of sessions.values()) {
     for (const tip of session.tips) {
-      for (const pos of getTipWorldPositions(session, tip)) {
-        drawTipGlow(glowCtx, pos.x, pos.y, tip.width);
+      for (const pos of engine.getTipWorldPositions(session, tip)) {
+        engine.drawTipGlow(glowCtx, pos.x, pos.y, tip.width);
       }
     }
   }
@@ -128,14 +142,23 @@ function ensureLoopRunning() {
  * undoable action. Shared by a normal pointer release and by the
  * drawer forcing any in-progress growth to finish (e.g. on open). */
 function finishSession(id) {
-  if (!sessions.has(id)) return;
+  const entry = sessions.get(id);
+  if (!entry) return;
   sessions.delete(id);
+
+  // One last, unbatched thickening pass so the frozen result reflects
+  // the exact moment of release rather than the last periodic tick.
+  if (entry.session.burning === 'constant') {
+    window.App.burning.finalizeThickening(burnCtx, entry.session, entry.engine);
+  }
+
   history.commit();
   if (sessions.size === 0) {
     // The loop is about to stop and won't get another chance to
     // clear the transient glow layer, so do it now.
     clearGlow();
   }
+  if (window.App.drawer) window.App.drawer.refreshHistoryButtons();
 }
 
 function endAllSessions() {
@@ -147,19 +170,21 @@ function endAllSessions() {
 const pointerController = createPointerController({
   onTap(x, y) {
     if (window.App.drawer && window.App.drawer.isOpen()) return;
-    drawBurnDot(burnCtx, x, y);
+    activeEngine().drawBurnDot(burnCtx, x, y);
     history.commit();
+    if (window.App.drawer) window.App.drawer.refreshHistoryButtons();
   },
   onHoldStart(id, x, y) {
     if (window.App.drawer && window.App.drawer.isOpen()) return;
-    sessions.set(
-      id,
-      createGrowthSession(burnCtx, x, y, {
-        branchCount: settings.branches,
-        symmetric: settings.symmetry,
-      })
-    );
+    const engine = activeEngine();
+    const session = engine.createGrowthSession(burnCtx, x, y, {
+      branchCount: settings.branches,
+      symmetric: settings.symmetry,
+    });
+    window.App.burning.prepareSession(session, settings.burning);
+    sessions.set(id, { session, engine });
     ensureLoopRunning();
+    if (window.App.drawer) window.App.drawer.refreshHistoryButtons();
   },
   onHoldEnd(id) {
     finishSession(id);
@@ -168,7 +193,22 @@ const pointerController = createPointerController({
 
 pointerController.attach(burnCanvas);
 
+/** Wipes every burn mark back to bare wood. Recorded as its own
+ * undoable action, so an accidental clear is a single Undo away. */
+function clearBoard() {
+  burnCtx.save();
+  burnCtx.setTransform(1, 0, 0, 1, 0, 0);
+  burnCtx.clearRect(0, 0, burnCanvas.width, burnCanvas.height);
+  burnCtx.restore();
+  history.commit();
+  if (window.App.drawer) window.App.drawer.refreshHistoryButtons();
+}
+
 window.App.growth = {
   isActive: () => sessions.size > 0,
   endAllSessions,
+};
+
+window.App.board = {
+  clear: clearBoard,
 };
